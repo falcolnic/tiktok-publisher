@@ -643,3 +643,23 @@
   opacity: 0.88;
   transform: translateY(-1px);
 }
+
+
+.footerLinks {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.footerLinks a {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footerLinks a:hover {
+  color: var(--text);
+}

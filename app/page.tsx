@@ -630,6 +630,10 @@ export default function Home() {
 
       <footer className={styles.footer}>
         <span className={styles.footerNote}>API keys stored locally · Never sent to any server except TikTok</span>
+        <div className={styles.footerLinks}>
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
+        </div>
       </footer>
       <DonateWidget />
     </div>

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import styles from './guide.module.css';
 import DonateWidget from './DonateWidget';
 
+const PROD_URL = 'https://tiktok-uploaderr.vercel.app';
+
 const steps = [
     {
         id: 1,
@@ -44,13 +46,20 @@ const steps = [
                 <li><strong>Platform</strong>: Web</li>
                 </ul>
             </li>
-            <li>Set a <strong>Redirect URI</strong>. During development you can use <code>https://localhost:3000/callback</code></li>
+            <li>When asked for legal & app URLs, paste these exact values:
+                <ul>
+                <li><strong>Terms of Service URL:</strong> <code>{PROD_URL}/terms</code></li>
+                <li><strong>Privacy Policy URL:</strong> <code>{PROD_URL}/privacy</code></li>
+                <li><strong>Website URL:</strong> <code>{PROD_URL}</code></li>
+                </ul>
+            </li>
+            <li>Under <strong>Login Kit → Redirect URI</strong>, add: <code>{PROD_URL}/callback</code></li>
             <li>Click <strong>Create</strong></li>
             </ol>
-            <p>After creation you'll see your app's dashboard. Note your <strong>Client Key</strong> and <strong>Client Secret</strong> — you'll need these for OAuth.</p>
+            <p>After creation, note your <strong>Client Key</strong> and <strong>Client Secret</strong> from the app dashboard — you'll need them in Step 5.</p>
             <div className={styles.note}>
             <span className={styles.noteIcon}>⚠</span>
-            Keep your Client Secret private. Never expose it in frontend code.
+            Keep your Client Secret private. You'll enter it directly in the browser during the OAuth flow — it's never stored anywhere on our end.
             </div>
         </div>
         ),
@@ -101,34 +110,28 @@ const steps = [
         id: 5,
         tag: 'Step 5',
         title: 'Get a Bearer Token via OAuth',
-        time: '~10 min',
+        time: '~5 min',
         content: (
         <div>
-            <p>Each TikTok account that you want to post to must authorize your app. The result is a <strong>User Access Token</strong> — this is the Bearer token you paste into TikPublish.</p>
-            <h4>The OAuth flow</h4>
-            <ol>
-            <li>
-                <strong>Build the authorization URL</strong> and open it in a browser:
-                <CodeBlock code={`https://www.tiktok.com/v2/auth/authorize/\n  ?client_key=YOUR_CLIENT_KEY\n  &scope=video.publish\n  &response_type=code\n  &redirect_uri=https://localhost:3000/callback\n  &state=random_string_for_csrf`} />
-            </li>
-            <li>The TikTok user logs in and approves your app</li>
-            <li>TikTok redirects to your <code>redirect_uri</code> with a <code>?code=...</code> param</li>
-            <li>
-                <strong>Exchange the code for a token</strong> (server-side only):
-                <CodeBlock code={`POST https://open.tiktokapis.com/v2/oauth/token/\n\nBody (form-encoded):\n  client_key=YOUR_CLIENT_KEY\n  client_secret=YOUR_CLIENT_SECRET\n  code=CODE_FROM_STEP_3\n  grant_type=authorization_code\n  redirect_uri=https://localhost:3000/callback`} />
-            </li>
-            <li>
-                The response contains your token:
-                <CodeBlock code={`{\n  "access_token": "act.example12345...",  ← paste this into TikPublish\n  "expires_in": 86400,\n  "refresh_token": "...",\n  "scope": "video.publish"\n}`} />
-            </li>
-            </ol>
+            <p>Each TikTok account that wants to post must authorize your app. This gives you a <strong>Bearer token</strong> to paste into TikPublish. The whole flow happens right here on this site.</p>
+
+            <h4>1. Build the authorization URL</h4>
+            <p>Replace <code>YOUR_CLIENT_KEY</code> with the Client Key from your TikTok app dashboard, then open the URL in your browser:</p>
+            <CodeBlock code={`https://www.tiktok.com/v2/auth/authorize/?client_key=YOUR_CLIENT_KEY&scope=video.publish&response_type=code&redirect_uri=${PROD_URL}/callback&state=tikpublish`} />
+
+            <h4>2. Authorize in TikTok</h4>
+            <p>The TikTok account that wants to post logs in and clicks <strong>Authorize</strong>. TikTok will then redirect them back to this site automatically.</p>
+
+            <h4>3. Exchange for a token</h4>
+            <p>You'll land on the <strong>/callback</strong> page on this site. It will ask for your Client Key and Client Secret — enter them, click exchange, and your Bearer token appears ready to copy.</p>
+
             <div className={styles.note}>
             <span className={styles.noteIcon}>💡</span>
-            For a quick test without building the full OAuth flow, use <strong>Postman</strong> — it has OAuth 2.0 support built in and can handle the redirect and token exchange for you.
+            The Client Secret is sent directly from your browser to TikTok's API. It's never stored on any server.
             </div>
             <div className={styles.note}>
             <span className={styles.noteIcon}>⚠</span>
-            Tokens expire after 24 hours. Use the <code>refresh_token</code> to get a new one without re-authorizing.
+            Tokens expire after <strong>24 hours</strong>. Repeat this step to get a fresh token when it expires.
             </div>
         </div>
         ),
@@ -140,17 +143,17 @@ const steps = [
         time: '~1 min',
         content: (
         <div>
-            <p>Once you have a Bearer token, add it to TikPublish.</p>
+            <p>Once you have a Bearer token from the callback page, add it to TikPublish.</p>
             <ol>
             <li>Go to the <strong>Accounts</strong> tab</li>
             <li>Click <strong>+ Add Account</strong></li>
             <li>Give it a label (e.g. "Brand Account")</li>
-            <li>Paste the <code>access_token</code> value — it starts with <code>act.</code></li>
+            <li>Paste the token — it starts with <code>act.</code></li>
             <li>Click <strong>✓ Verify Token</strong> to confirm it works</li>
             </ol>
             <div className={styles.note}>
             <span className={styles.noteIcon}>🔒</span>
-            Tokens are stored only in your browser's localStorage and only ever sent to TikTok's API (proxied through your own Next.js backend).
+            Tokens are stored only in your browser's localStorage and are only ever sent to TikTok's API endpoints.
             </div>
         </div>
         ),
@@ -220,10 +223,10 @@ const steps = [
             <div className={styles.heroInner}>
             <p className={styles.heroEyebrow}>Getting Started</p>
             <h1 className={styles.heroTitle}>From zero to posting<br />in 7 steps</h1>
-            <p className={styles.heroSub}>Everything you need to set up TikTok API access and start publishing videos across multiple accounts.</p>
+            <p className={styles.heroSub}>Everything you need to set up TikTok API access and start publishing videos across multiple accounts. No coding required.</p>
             <div className={styles.heroBadges}>
-                <span className={styles.heroBadge}>No coding required for setup</span>
-                <span className={styles.heroBadge}>~30 min total</span>
+                <span className={styles.heroBadge}>No coding required</span>
+                <span className={styles.heroBadge}>~40 min total</span>
                 <span className={styles.heroBadge}>Free TikTok Dev account</span>
             </div>
             </div>
@@ -275,10 +278,10 @@ const steps = [
             <div className={styles.faqGrid}>
                 {[
                 { q: 'Do I need a business account?', a: 'No, a regular TikTok account works. The developer account is separate from the posting accounts.' },
-                { q: 'How long do tokens last?', a: 'Access tokens expire after 24 hours. Refresh tokens last ~365 days and can be used to get new access tokens without re-authorizing.' },
-                { q: 'Can I post to accounts I don\'t own?', a: 'Only if that account goes through the OAuth flow and authorizes your app. You can\'t post to accounts that haven\'t explicitly approved your app.' },
-                { q: 'Why are my videos private?', a: 'Until your app passes TikTok\'s audit, all posted videos default to private. Your integration is working correctly — this is just TikTok\'s restriction for unaudited apps.' },
-                { q: 'What video formats are supported?', a: 'MP4 with H.264 encoding is recommended. Max duration depends on the account settings (returned by the Creator Info endpoint).' },
+                { q: 'How long do tokens last?', a: 'Access tokens expire after 24 hours. Repeat Step 5 to get a fresh one — it only takes a minute once your app is set up.' },
+                { q: 'Can I post to accounts I don\'t own?', a: 'Only if that account goes through the OAuth flow (Step 5) and authorizes your app. You can\'t post to accounts that haven\'t explicitly approved your app.' },
+                { q: 'Why are my videos private?', a: 'Until your app passes TikTok\'s audit (Step 7), all posted videos default to private. Your integration is working correctly.' },
+                { q: 'What video formats are supported?', a: 'MP4 with H.264 encoding is recommended. Max duration is shown after verifying your token in the Accounts tab.' },
                 { q: 'Does this work with the sandbox?', a: 'Yes — create a sandbox in the Developer Portal, use sandbox tokens in TikPublish. Everything works the same way.' },
                 ].map(({ q, a }) => (
                 <div key={q} className={styles.faqItem}>
