@@ -450,7 +450,7 @@ export default function Home() {
         totalChunks = 1;
       } else {
         totalChunks = Math.ceil(file.size / TEN_MB);
-        chunkSize = Math.ceil(file.size / totalChunks);
+        chunkSize = Math.floor(file.size / totalChunks); // floor instead of ceil
       }
 
       sourceInfo = {  // no const, assign to outer variable!
