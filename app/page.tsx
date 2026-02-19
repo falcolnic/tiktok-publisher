@@ -444,8 +444,14 @@ export default function Home() {
         return;
       }
 
-      chunkSize = file.size < 10 * 1024 * 1024 ? file.size : 10 * 1024 * 1024; // no const!
-      totalChunks = Math.ceil(file.size / chunkSize);                             // no const!
+      const TEN_MB = 10 * 1024 * 1024;
+      if (file.size <= TEN_MB) {
+        chunkSize = file.size;
+        totalChunks = 1;
+      } else {
+        totalChunks = Math.ceil(file.size / TEN_MB);
+        chunkSize = Math.ceil(file.size / totalChunks);
+      }
 
       sourceInfo = {  // no const, assign to outer variable!
         source: 'FILE_UPLOAD',
