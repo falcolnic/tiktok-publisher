@@ -433,33 +433,30 @@ export default function Home() {
     } else {
       const file = job.file!;
 
-      const MAX_FILE = 4 * 1024 * 1024 * 1024; // 4GB
+      const MAX_FILE = 4 * 1024 * 1024 * 1024;
       if (file.size > MAX_FILE) {
-        patchJob(id, {
-          status: 'error',
-          error: `File too large. Maximum is 4GB, your file is ${(file.size / 1024 / 1024 / 1024).toFixed(2)}GB.`,
-        });
+        patchJob(id, { status: 'error', error: `File too large. Maximum is 4GB, your file is ${(file.size / 1024 / 1024 / 1024).toFixed(2)}GB.` });
         return;
       }
 
       if (file.size < 1024 * 10) {
-        patchJob(id, {
-          status: 'error',
-          error: `File too small (${(file.size / 1024).toFixed(1)}KB). Please use a valid video file.`,
-        });
+        patchJob(id, { status: 'error', error: `File too small (${(file.size / 1024).toFixed(1)}KB). Please use a valid video file.` });
         return;
       }
 
-      const chunkSize = file.size < 10 * 1024 * 1024 ? file.size : 10 * 1024 * 1024;
-      const totalChunks = Math.ceil(file.size / chunkSize);
+      chunkSize = file.size < 10 * 1024 * 1024 ? file.size : 10 * 1024 * 1024; // no const!
+      totalChunks = Math.ceil(file.size / chunkSize);                             // no const!
 
-      const sourceInfo = {
+      sourceInfo = {  // no const, assign to outer variable!
         source: 'FILE_UPLOAD',
         video_size: file.size,
         chunk_size: chunkSize,
         total_chunk_count: totalChunks,
       };
     }
+    console.log('=== PUBLISH DEBUG ===');
+    console.log('postInfo:', JSON.stringify(postInfo, null, 2));
+    console.log('sourceInfo:', JSON.stringify(sourceInfo, null, 2));
 
     try {
       const initRes = await fetch('/api/publish-init', {
