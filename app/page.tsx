@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState, useRef, useCallback } from 'react';
 import { useLocalStorage } from '@/lib/useLocalStorage';
-import { TikTokAccount, PostJob, UploadSource, CreatorInfo } from '@/lib/types';
+import { TikTokAccount, PostJob } from '@/lib/types';
 import styles from './page.module.css';
 import DonateWidget from './guide/DonateWidget';
 
@@ -10,7 +10,6 @@ function generateId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-// ─── Account Card ────────────────────────────────────────────────────────────
 function AccountCard({
   account,
   onUpdate,
@@ -114,7 +113,6 @@ function AccountCard({
   );
 }
 
-// ─── Job Card ─────────────────────────────────────────────────────────────────
 function JobCard({
   job,
   accounts,
@@ -130,7 +128,7 @@ function JobCard({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const account = accounts.find(a => a.id === job.accountId);
-  const privacyOptions = account?.creatorInfo?.privacy_level_options ?? ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'];
+  const privacyOptions = account?.creatorInfo?.privacy_level_options ?? ['SELF_ONLY', 'MUTUAL_FOLLOW_FRIENDS', 'PUBLIC_TO_EVERYONE'];
 
   const statusColor = {
     idle: '#666',
@@ -140,6 +138,8 @@ function JobCard({
     done: '#00e676',
     error: '#ff1744',
   }[job.status];
+
+  const canPublish = job.accountId && job.title && job.file && job.privacyLevel;
 
   return (
     <div className={`${styles.jobCard} ${job.status === 'done' ? styles.jobDone : ''} ${job.status === 'error' ? styles.jobError : ''}`}>
@@ -192,6 +192,7 @@ function JobCard({
             onChange={e => onUpdate({ ...job, privacyLevel: e.target.value })}
             disabled={job.status !== 'idle'}
           >
+            <option value="">— Select privacy —</option>
             {privacyOptions.map(p => (
               <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>
             ))}
@@ -236,11 +237,12 @@ function JobCard({
           📁 File Upload
         </button>
         <button
-          className={`${styles.sourceBtn} ${job.source === 'PULL_FROM_URL' ? styles.sourceBtnActive : ''}`}
-          onClick={() => onUpdate({ ...job, source: 'PULL_FROM_URL', file: undefined })}
-          disabled={job.status !== 'idle'}
+          className={`${styles.sourceBtn} ${styles.sourceBtnDisabled}`}
+          title="Pull from URL requires a verified domain — coming soon"
+          disabled
         >
           🔗 Pull from URL
+          <span className={styles.comingSoon}>soon</span>
         </button>
       </div>
 
@@ -285,18 +287,6 @@ function JobCard({
         </div>
       )}
 
-      {job.source === 'PULL_FROM_URL' && (
-        <div className={styles.fieldGroup}>
-          <label>Video URL</label>
-          <input
-            value={job.videoUrl ?? ''}
-            onChange={e => onUpdate({ ...job, videoUrl: e.target.value })}
-            placeholder="https://example.com/video.mp4"
-            disabled={job.status !== 'idle'}
-          />
-        </div>
-      )}
-
       {job.status !== 'idle' && (
         <div className={styles.progressWrap}>
           <div className={styles.progressBar}>
@@ -309,13 +299,21 @@ function JobCard({
       {job.error && <p className={styles.errorSmall}>{job.error}</p>}
 
       {job.status === 'idle' && (
-        <button
-          className={styles.publishBtn}
-          onClick={() => onPublish(job.id)}
-          disabled={!job.accountId || !job.title || (job.source === 'FILE_UPLOAD' ? !job.file : !job.videoUrl)}
-        >
-          Publish to TikTok →
-        </button>
+        <>
+          <p className={styles.consent}>
+            By posting, you agree to TikTok's{' '}
+            <a href="https://www.tiktok.com/legal/music-usage-confirmation" target="_blank" rel="noreferrer">
+              Music Usage Confirmation
+            </a>
+          </p>
+          <button
+            className={styles.publishBtn}
+            onClick={() => onPublish(job.id)}
+            disabled={!canPublish}
+          >
+            Publish to TikTok →
+          </button>
+        </>
       )}
 
       {job.status === 'done' && (
@@ -327,7 +325,6 @@ function JobCard({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [accounts, setAccounts, accountsLoaded] = useLocalStorage<TikTokAccount[]>('tt_accounts', []);
   const [jobs, setJobs] = useState<PostJob[]>([]);
@@ -368,7 +365,7 @@ export default function Home() {
       id: generateId(),
       accountId: accounts[0]?.id ?? '',
       title: '',
-      privacyLevel: accounts[0]?.creatorInfo?.privacy_level_options[0] ?? 'PUBLIC_TO_EVERYONE',
+      privacyLevel: '', // no default — user must select
       disableComment: false,
       disableDuet: false,
       disableStitch: false,
@@ -397,7 +394,6 @@ export default function Home() {
     const account = accounts.find(a => a.id === job?.accountId);
     if (!job || !account) return;
 
-    // Step 1: ensure creator info
     patchJob(id, { status: 'querying', progress: 5, statusMessage: 'Querying creator info…' });
 
     let creatorInfo = account.creatorInfo;
@@ -412,7 +408,6 @@ export default function Home() {
       }
     }
 
-    // Step 2: init publish
     patchJob(id, { status: 'uploading', progress: 15, statusMessage: 'Initialising upload…' });
 
     const postInfo = {
@@ -450,16 +445,17 @@ export default function Home() {
         totalChunks = 1;
       } else {
         totalChunks = Math.ceil(file.size / TEN_MB);
-        chunkSize = Math.floor(file.size / totalChunks); // floor instead of ceil
+        chunkSize = Math.floor(file.size / totalChunks);
       }
 
-      sourceInfo = {  // no const, assign to outer variable!
+      sourceInfo = {
         source: 'FILE_UPLOAD',
         video_size: file.size,
         chunk_size: chunkSize,
         total_chunk_count: totalChunks,
       };
     }
+
     console.log('=== PUBLISH DEBUG ===');
     console.log('postInfo:', JSON.stringify(postInfo, null, 2));
     console.log('sourceInfo:', JSON.stringify(sourceInfo, null, 2));
@@ -471,19 +467,18 @@ export default function Home() {
         body: JSON.stringify({ token: account.token, post_info: postInfo, source_info: sourceInfo }),
       });
       const initJson = await initRes.json();
+      console.log('TikTok init response:', JSON.stringify(initJson, null, 2));
       if (!initRes.ok) throw new Error(initJson.error || 'Publish init failed');
 
       const { publish_id, upload_url } = initJson.data;
       patchJob(id, { publishId: publish_id, progress: 30, statusMessage: 'Upload initialised…' });
 
-      // Step 3: if FILE_UPLOAD, PUT directly from browser to TikTok upload URL
       if (job.source === 'FILE_UPLOAD' && upload_url && job.file) {
         const file = job.file;
-        const CHUNK = chunkSize;
 
         for (let i = 0; i < totalChunks; i++) {
-          const start = i * CHUNK;
-          const end = Math.min(start + CHUNK, file.size) - 1;
+          const start = i * chunkSize;
+          const end = Math.min(start + chunkSize, file.size) - 1;
           const chunk = file.slice(start, end + 1);
 
           await fetch(upload_url, {
@@ -500,7 +495,6 @@ export default function Home() {
         }
       }
 
-      // Step 4: poll status
       patchJob(id, { status: 'processing', progress: 85, statusMessage: 'Processing on TikTok…' });
 
       let attempts = 0;
@@ -530,7 +524,6 @@ export default function Home() {
         patchJob(id, { progress: prog, statusMessage: `Processing… (${s ?? 'waiting'})` });
       }
 
-      // If we hit max attempts, still show done optimistically
       patchJob(id, { status: 'done', progress: 100, statusMessage: 'Submitted! Check TikTok for status.' });
 
     } catch (e: any) {
@@ -572,9 +565,9 @@ export default function Home() {
             <span className={styles.dot} style={{ background: verifiedCount > 0 ? '#00e676' : '#666' }} />
             {verifiedCount}/{accounts.length} verified
           </span>
-            <Link href="/guide" className={styles.guideLink}>
-              Setup Guide →
-            </Link>
+          <Link href="/guide" className={styles.guideLink}>
+            Setup Guide →
+          </Link>
         </div>
       </header>
 
@@ -659,6 +652,7 @@ export default function Home() {
           <Link href="/terms">Terms of Service</Link>
         </div>
       </footer>
+
       <DonateWidget />
     </div>
   );
