@@ -432,16 +432,28 @@ export default function Home() {
       sourceInfo = { source: 'PULL_FROM_URL', video_url: job.videoUrl };
     } else {
       const file = job.file!;
-      const MIN_CHUNK = 5 * 1024 * 1024;   // 5MB
-      const MAX_CHUNK = 64 * 1024 * 1024;  // 64MB
 
-      chunkSize = Math.ceil(file.size / 5); // aim for 5 chunks
-      chunkSize = Math.max(MIN_CHUNK, chunkSize); // not less than 5MB
-      chunkSize = Math.min(MAX_CHUNK, chunkSize); // not more than 64MB
+      const MAX_FILE = 4 * 1024 * 1024 * 1024; // 4GB
+      if (file.size > MAX_FILE) {
+        patchJob(id, {
+          status: 'error',
+          error: `File too large. Maximum is 4GB, your file is ${(file.size / 1024 / 1024 / 1024).toFixed(2)}GB.`,
+        });
+        return;
+      }
 
-      totalChunks = Math.ceil(file.size / chunkSize);
+      if (file.size < 1024 * 10) {
+        patchJob(id, {
+          status: 'error',
+          error: `File too small (${(file.size / 1024).toFixed(1)}KB). Please use a valid video file.`,
+        });
+        return;
+      }
 
-      sourceInfo = {
+      const chunkSize = file.size < 10 * 1024 * 1024 ? file.size : 10 * 1024 * 1024;
+      const totalChunks = Math.ceil(file.size / chunkSize);
+
+      const sourceInfo = {
         source: 'FILE_UPLOAD',
         video_size: file.size,
         chunk_size: chunkSize,
