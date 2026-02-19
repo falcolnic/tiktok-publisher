@@ -425,16 +425,26 @@ export default function Home() {
     };
 
     let sourceInfo: any;
+    let chunkSize = 0;
+    let totalChunks = 0;
+
     if (job.source === 'PULL_FROM_URL') {
       sourceInfo = { source: 'PULL_FROM_URL', video_url: job.videoUrl };
     } else {
       const file = job.file!;
-      const CHUNK = 10_000_000;
-      const totalChunks = Math.ceil(file.size / CHUNK);
+      const MIN_CHUNK = 5 * 1024 * 1024;   // 5MB
+      const MAX_CHUNK = 64 * 1024 * 1024;  // 64MB
+
+      chunkSize = Math.ceil(file.size / 5); // aim for 5 chunks
+      chunkSize = Math.max(MIN_CHUNK, chunkSize); // not less than 5MB
+      chunkSize = Math.min(MAX_CHUNK, chunkSize); // not more than 64MB
+
+      totalChunks = Math.ceil(file.size / chunkSize);
+
       sourceInfo = {
         source: 'FILE_UPLOAD',
         video_size: file.size,
-        chunk_size: CHUNK,
+        chunk_size: chunkSize,
         total_chunk_count: totalChunks,
       };
     }
@@ -454,8 +464,7 @@ export default function Home() {
       // Step 3: if FILE_UPLOAD, PUT directly from browser to TikTok upload URL
       if (job.source === 'FILE_UPLOAD' && upload_url && job.file) {
         const file = job.file;
-        const CHUNK = 10_000_000;
-        const totalChunks = Math.ceil(file.size / CHUNK);
+        const CHUNK = chunkSize;
 
         for (let i = 0; i < totalChunks; i++) {
           const start = i * CHUNK;

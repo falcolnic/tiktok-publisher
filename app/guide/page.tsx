@@ -5,9 +5,9 @@ import Link from 'next/link';
 import styles from './guide.module.css';
 import DonateWidget from './DonateWidget';
 
-const PROD_URL = 'https://tiktok-uploaderr.vercel.app';
+const PROD_URL = 'https://tiktok-publisher-alpha.vercel.app';
 
-const steps = [
+    const steps = [
     {
         id: 1,
         tag: 'Step 1',
@@ -18,13 +18,13 @@ const steps = [
             <p>You need a TikTok for Developers account to create an app and get API access.</p>
             <ol>
             <li>Go to <a href="https://developers.tiktok.com" target="_blank" rel="noreferrer">developers.tiktok.com</a></li>
-            <li>Click <strong>Log in</strong> and sign in with your TikTok account</li>
+            <li>Click <strong>Log in</strong> and sign in with any TikTok account</li>
             <li>Accept the Developer Terms of Service</li>
             <li>You'll land on the Developer Portal dashboard</li>
             </ol>
             <div className={styles.note}>
             <span className={styles.noteIcon}>ℹ</span>
-            Your developer account is separate from TikTok accounts you want to post to. You'll authorize those later via OAuth.
+            Your developer account is just for managing apps — it's separate from the TikTok accounts you'll post to.
             </div>
         </div>
         ),
@@ -32,34 +32,27 @@ const steps = [
     {
         id: 2,
         tag: 'Step 2',
-        title: 'Register Your App',
-        time: '~10 min',
+        title: 'Create an App',
+        time: '~5 min',
         content: (
         <div>
-            <p>Create an app in the Developer Portal — this is what will have permission to publish videos.</p>
+            <p>Create an app in the Developer Portal — this is what gets permission to publish videos on behalf of TikTok accounts.</p>
             <ol>
-            <li>In the portal, go to <strong>My Apps → Create App</strong></li>
-            <li>Fill in:
-                <ul>
-                <li><strong>App Name</strong>: anything you want (e.g. "My Publisher")</li>
-                <li><strong>App Category</strong>: pick the closest match</li>
-                <li><strong>Platform</strong>: Web</li>
-                </ul>
-            </li>
-            <li>When asked for legal & app URLs, paste these exact values:
+            <li>In the portal, click <strong>Manage Apps → Create an app</strong></li>
+            <li>Fill in a name (e.g. "My TikTok Publisher"), click Confirm</li>
+            <li>Fill in App icon, Category (e.g. "Photo & Video") and Description (e.g. "Website to publish videos to TikTok")</li>
+            <li>For the required URLs, use these:
                 <ul>
                 <li><strong>Terms of Service URL:</strong> <code>{PROD_URL}/terms</code></li>
                 <li><strong>Privacy Policy URL:</strong> <code>{PROD_URL}/privacy</code></li>
-                <li><strong>Website URL:</strong> <code>{PROD_URL}</code></li>
                 </ul>
             </li>
-            <li>Under <strong>Login Kit → Redirect URI</strong>, add: <code>{PROD_URL}/callback</code></li>
-            <li>Click <strong>Create</strong></li>
+            <li>Choose <strong>Web</strong> as the Platforms. For the required URL, use <code>{PROD_URL}</code></li>
+            <li>Click <strong>Confirm</strong> to create the app</li>
             </ol>
-            <p>After creation, note your <strong>Client Key</strong> and <strong>Client Secret</strong> from the app dashboard — you'll need them in Step 5.</p>
             <div className={styles.note}>
-            <span className={styles.noteIcon}>⚠</span>
-            Keep your Client Secret private. You'll enter it directly in the browser during the OAuth flow — it's never stored anywhere on our end.
+            <span className={styles.noteIcon}>ℹ</span>
+            Don't worry about domain verification — for sandbox testing it's not required.
             </div>
         </div>
         ),
@@ -67,20 +60,35 @@ const steps = [
     {
         id: 3,
         tag: 'Step 3',
-        title: 'Add the Content Posting API',
-        time: '~5 min',
+        title: 'Create a Sandbox & Add Test Users',
+        time: '~10 min',
         content: (
         <div>
-            <p>You need to explicitly add the Content Posting API product to your app and enable Direct Post mode.</p>
+            <p>The sandbox lets you test everything for free without domain verification or app audit. All videos post privately to test accounts.</p>
+
+            <h4>1. Create the Sandbox app</h4>
             <ol>
-            <li>In your app dashboard, click <strong>Add Products</strong></li>
-            <li>Find <strong>Content Posting API</strong> and click <strong>Add</strong></li>
-            <li>In the Content Posting API settings, enable the <strong>Direct Post</strong> toggle</li>
-            <li>Request the <strong><code>video.publish</code></strong> scope</li>
+            <li>In your app dashboard, in top bar (next to Production), select <strong>Sandbox</strong></li>
+            <li>Give it a name (e.g. "Publisher Sandbox")</li>
+            <li>Click <strong>Confirm</strong></li>
+            <li>Open the sandbox app — it has its own <strong>Client Key</strong> and <strong>Client Secret</strong>. Save these.</li>
             </ol>
+
+            <h4>2. Add Test Users</h4>
+            <ol>
+            <li>Inside the sandbox app, go to <strong>Test Users</strong></li>
+            <li>Click <strong>Add Test User</strong></li>
+            <li>Enter the TikTok username of the account you want to post from</li>
+            <li>That account gets an invite notification in TikTok — accept it</li>
+            </ol>
+
+            <div className={styles.note}>
+            <span className={styles.noteIcon}>💡</span>
+            You can add up to 10 test users. Each one needs to accept the invite before they can authorize your app.
+            </div>
             <div className={styles.note}>
             <span className={styles.noteIcon}>⚠</span>
-            Until your app passes the audit (Step 7), all posted videos will be <strong>private only</strong>. This is fine for testing.
+            Use the <strong>sandbox</strong> Client Key and Secret from now on — not the ones from your main app.
             </div>
         </div>
         ),
@@ -88,20 +96,22 @@ const steps = [
     {
         id: 4,
         tag: 'Step 4',
-        title: 'Set Up a Sandbox (for Testing)',
+        title: 'Add Login Kit to Sandbox',
         time: '~5 min',
         content: (
         <div>
-            <p>Before your app is approved, use a Sandbox environment to test without restrictions.</p>
+            <p>Login Kit handles the OAuth flow that generates bearer tokens. You need to add it to your sandbox app and whitelist the redirect URL.</p>
             <ol>
-            <li>In your app dashboard, click <strong>Add Sandbox</strong></li>
-            <li>Create a sandbox app — it gets its own Client Key/Secret</li>
-            <li>Add test user accounts that can authorize without going through app review</li>
-            <li>The sandbox uses the same API endpoints — just with sandbox tokens</li>
+            <li>Inside the <strong>sandbox</strong> app dashboard, click <strong>Add products</strong></li>
+            <li>Find <strong>Login Kit</strong> and click <strong>Add</strong></li>
+            <li>Under Login Kit settings, add this exact <strong>Redirect URI</strong>:
+                <CodeBlock code={`${PROD_URL}/callback`} />
+            </li>
+            <li>Save</li>
             </ol>
             <div className={styles.note}>
-            <span className={styles.noteIcon}>💡</span>
-            Test everything end-to-end in the sandbox first. Switch to production tokens once everything works.
+            <span className={styles.noteIcon}>⚠</span>
+            The Redirect URI must match exactly — no trailing slash, no typos.
             </div>
         </div>
         ),
@@ -109,29 +119,20 @@ const steps = [
     {
         id: 5,
         tag: 'Step 5',
-        title: 'Get a Bearer Token via OAuth',
+        title: 'Add Content Posting API to Sandbox',
         time: '~5 min',
         content: (
         <div>
-            <p>Each TikTok account that wants to post must authorize your app. This gives you a <strong>Bearer token</strong> to paste into TikPublish. The whole flow happens right here on this site.</p>
-
-            <h4>1. Build the authorization URL</h4>
-            <p>Replace <code>YOUR_CLIENT_KEY</code> with the Client Key from your TikTok app dashboard, then open the URL in your browser:</p>
-            <CodeBlock code={`https://www.tiktok.com/v2/auth/authorize/?client_key=YOUR_CLIENT_KEY&scope=video.publish&response_type=code&redirect_uri=${PROD_URL}/callback&state=tikpublish`} />
-
-            <h4>2. Authorize in TikTok</h4>
-            <p>The TikTok account that wants to post logs in and clicks <strong>Authorize</strong>. TikTok will then redirect them back to this site automatically.</p>
-
-            <h4>3. Exchange for a token</h4>
-            <p>You'll land on the <strong>/callback</strong> page on this site. It will ask for your Client Key and Client Secret — enter them, click exchange, and your Bearer token appears ready to copy.</p>
-
+            <p>This is what actually allows your sandbox app to publish videos.</p>
+            <ol>
+            <li>Inside the <strong>sandbox</strong> app dashboard, click <strong>Add products</strong></li>
+            <li>Find <strong>Content Posting API</strong> and click <strong>Add</strong></li>
+            <li>Enable the <strong>Direct Post</strong> toggle</li>
+            <li>Save</li>
+            </ol>
             <div className={styles.note}>
-            <span className={styles.noteIcon}>💡</span>
-            The Client Secret is sent directly from your browser to TikTok's API. It's never stored on any server.
-            </div>
-            <div className={styles.note}>
-            <span className={styles.noteIcon}>⚠</span>
-            Tokens expire after <strong>24 hours</strong>. Repeat this step to get a fresh token when it expires.
+            <span className={styles.noteIcon}>ℹ</span>
+            In sandbox mode the <code>video.publish</code> scope is pre-approved — no audit needed.
             </div>
         </div>
         ),
@@ -139,21 +140,35 @@ const steps = [
     {
         id: 6,
         tag: 'Step 6',
-        title: 'Paste Token into TikPublish',
-        time: '~1 min',
+        title: 'Get a Bearer Token',
+        time: '~5 min',
         content: (
         <div>
-            <p>Once you have a Bearer token from the callback page, add it to TikPublish.</p>
+            <p>Each TikTok account you want to post to needs to authorize your sandbox app. This gives you a bearer token to paste into TikPublish.</p>
+
+            <h4>1. Open this URL in your browser</h4>
+            <p>Replace <code>YOUR_SANDBOX_CLIENT_KEY</code> with the Client Key from your sandbox app:</p>
+            <CodeBlock code={`https://www.tiktok.com/v2/auth/authorize/?client_key=YOUR_SANDBOX_CLIENT_KEY&scope=video.publish&response_type=code&redirect_uri=${PROD_URL}/callback&state=tikpublish`} />
+
+            <h4>2. Log in with a test user account</h4>
+            <p>Use one of the TikTok accounts you added as a test user in Step 3. Click <strong>Continue</strong>.</p>
+
+            <h4>3. Complete the exchange on the callback page</h4>
+            <p>TikTok redirects you to our website <code>https://tiktok-publisher-alpha.vercel.app/callback</code> automatically. On that page:</p>
             <ol>
-            <li>Go to the <strong>Accounts</strong> tab</li>
-            <li>Click <strong>+ Add Account</strong></li>
-            <li>Give it a label (e.g. "Brand Account")</li>
-            <li>Paste the token — it starts with <code>act.</code></li>
-            <li>Click <strong>✓ Verify Token</strong> to confirm it works</li>
+            <li>Enter your sandbox <strong>Client Key</strong></li>
+            <li>Enter your sandbox <strong>Client Secret</strong></li>
+            <li>Click <strong>Exchange for Bearer Token</strong></li>
+            <li>Your token appears — copy it</li>
             </ol>
+
             <div className={styles.note}>
-            <span className={styles.noteIcon}>🔒</span>
-            Tokens are stored only in your browser's localStorage and are only ever sent to TikTok's API endpoints.
+            <span className={styles.noteIcon}>⚠</span>
+            Tokens expire after <strong>24 hours</strong>. Just repeat this step to get a fresh one — takes about a minute once your app is set up.
+            </div>
+            <div className={styles.note}>
+            <span className={styles.noteIcon}>💡</span>
+            Your Client Secret is sent directly to TikTok and never stored anywhere on our servers.
             </div>
         </div>
         ),
@@ -161,20 +176,48 @@ const steps = [
     {
         id: 7,
         tag: 'Step 7',
-        title: 'Submit for App Audit (Production)',
-        time: 'Days / weeks',
+        title: 'Add Account to TikPublish',
+        time: '~1 min',
         content: (
         <div>
-            <p>While testing, all videos post as <strong>private</strong>. To post publicly, your app needs to pass TikTok's audit.</p>
+            <p>Now paste your bearer token into TikPublish to start publishing.</p>
             <ol>
-            <li>In your app dashboard, navigate to <strong>Audit</strong></li>
-            <li>Fill in your app description, use case, and privacy policy URL</li>
-            <li>Submit a demo video showing how your app uses the API</li>
-            <li>Wait for TikTok's review (typically 1–2 weeks)</li>
+            <li>Go to the <strong>Accounts</strong> tab</li>
+            <li>Click <strong>+ Add Account</strong></li>
+            <li>Give it a label (e.g. "My Test Account")</li>
+            <li>Paste the token — it starts with <code>act.</code></li>
+            <li>Click <strong>✓ Verify Token</strong> — you should see your TikTok avatar and username appear</li>
+            </ol>
+            <div className={styles.note}>
+            <span className={styles.noteIcon}>🔒</span>
+            Tokens are stored only in your browser's localStorage and are only ever sent to TikTok's API.
+            </div>
+        </div>
+        ),
+    },
+    {
+        id: 8,
+        tag: 'Step 8',
+        title: 'Publish Your First Video',
+        time: '~2 min',
+        content: (
+        <div>
+            <p>You're ready to publish!</p>
+            <ol>
+            <li>Go to the <strong>Publish Queue</strong> tab</li>
+            <li>Click <strong>+ New Video Job</strong></li>
+            <li>Select your account from the dropdown</li>
+            <li>Write a caption with hashtags</li>
+            <li>Choose <strong>File Upload</strong> and drag in your video</li>
+            <li>Click <strong>Publish to TikTok</strong></li>
             </ol>
             <div className={styles.note}>
             <span className={styles.noteIcon}>ℹ</span>
-            The audit verifies compliance with TikTok's <a href="https://www.tiktok.com/legal/tik-tok-developer-terms-of-service" target="_blank" rel="noreferrer">Terms of Service</a> and <a href="https://developers.tiktok.com/doc/content-sharing-guidelines" target="_blank" rel="noreferrer">Content Sharing Guidelines</a>.
+            In sandbox mode, all videos are posted as <strong>private</strong>. This is expected — check your TikTok app's private videos to confirm it worked.
+            </div>
+            <div className={styles.note}>
+            <span className={styles.noteIcon}>💡</span>
+            To post publicly with real accounts, your main app needs to pass TikTok's audit. Go to your <strong>main app</strong> dashboard (not sandbox) and click <strong>Apply for audit</strong>.
             </div>
         </div>
         ),
@@ -223,11 +266,11 @@ const steps = [
             <div className={styles.heroInner}>
             <p className={styles.heroEyebrow}>Getting Started</p>
             <h1 className={styles.heroTitle}>From zero to posting<br />in 7 steps</h1>
-            <p className={styles.heroSub}>Everything you need to set up TikTok API access and start publishing videos across multiple accounts. No coding required.</p>
+            <p className={styles.heroSub}>Set up TikTok API sandbox access and start publishing videos. No domain purchase or app audit required to get started.</p>
             <div className={styles.heroBadges}>
-                <span className={styles.heroBadge}>No coding required</span>
-                <span className={styles.heroBadge}>~40 min total</span>
-                <span className={styles.heroBadge}>Free TikTok Dev account</span>
+                <span className={styles.heroBadge}>Free sandbox</span>
+                <span className={styles.heroBadge}>No domain needed</span>
+                <span className={styles.heroBadge}>~30 min total</span>
             </div>
             </div>
         </div>
@@ -277,12 +320,12 @@ const steps = [
             <h2 className={styles.faqTitle}>Common Questions</h2>
             <div className={styles.faqGrid}>
                 {[
-                { q: 'Do I need a business account?', a: 'No, a regular TikTok account works. The developer account is separate from the posting accounts.' },
-                { q: 'How long do tokens last?', a: 'Access tokens expire after 24 hours. Repeat Step 5 to get a fresh one — it only takes a minute once your app is set up.' },
-                { q: 'Can I post to accounts I don\'t own?', a: 'Only if that account goes through the OAuth flow (Step 5) and authorizes your app. You can\'t post to accounts that haven\'t explicitly approved your app.' },
-                { q: 'Why are my videos private?', a: 'Until your app passes TikTok\'s audit (Step 7), all posted videos default to private. Your integration is working correctly.' },
-                { q: 'What video formats are supported?', a: 'MP4 with H.264 encoding is recommended. Max duration is shown after verifying your token in the Accounts tab.' },
-                { q: 'Does this work with the sandbox?', a: 'Yes — create a sandbox in the Developer Portal, use sandbox tokens in TikPublish. Everything works the same way.' },
+                { q: 'Do I need to buy a domain?', a: 'No! For sandbox testing everything works on the deployed Vercel URL. You only need a custom domain if you want to go fully public and pass TikTok\'s audit.' },
+                { q: 'Why are my videos private?', a: 'Sandbox mode always posts videos as private. This is expected and means everything is working correctly. To post publicly you need TikTok\'s app audit approval.' },
+                { q: 'How long do tokens last?', a: 'Access tokens expire after 24 hours. Just repeat Step 5 — once your app is set up it only takes about a minute to get a fresh token.' },
+                { q: 'Can I add multiple accounts?', a: 'Yes! Repeat Step 5 for each TikTok test user you added. Each gets their own token. Add them all in the Accounts tab.' },
+                { q: 'What video formats work?', a: 'MP4 with H.264 encoding is recommended. The max duration is shown after verifying your token — it depends on the account settings.' },
+                { q: 'Can I post to accounts I don\'t own?', a: 'Only if that account was added as a test user in your sandbox (Step 4) and accepted the invite. They also need to complete the OAuth flow in Step 5.' },
                 ].map(({ q, a }) => (
                 <div key={q} className={styles.faqItem}>
                     <h4>{q}</h4>
@@ -303,7 +346,8 @@ const steps = [
             <a key={href} href={href} target="_blank" rel="noreferrer" className={styles.resourceLink}>{label}</a>
             ))}
         </div>
-            <DonateWidget />
+
+        <DonateWidget />
         </div>
     );
 }
